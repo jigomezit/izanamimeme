@@ -1,0 +1,10 @@
+services:
+  - type: web
+    name: votacion-izanami
+    env: static
+    buildCommand: npm run build
+    staticPublishPath: ./out
+    envVars:
+      - key: NODE_VERSION
+        value: 18.x
+
