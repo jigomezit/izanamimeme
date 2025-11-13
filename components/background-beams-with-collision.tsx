@@ -53,8 +53,8 @@ const CollisionMechanism = ({
   beamOptions?: {
     initialX?: number;
     translateX?: number;
-    initialY?: number;
-    translateY?: number;
+    initialY?: string;
+    translateY?: string;
     rotate?: number;
     className?: string;
     duration?: number;
