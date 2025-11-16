@@ -27,10 +27,10 @@ export const BackgroundBeamsWithCollision = ({
         beamOptions={{
           initialX: 0,
           translateX: 0,
-          initialY: "-200px",
-          translateY: "1800px",
+          initialY: "1800px",
+          translateY: "-200px",
           rotate: 0,
-          className: "h-screen w-[2px] bg-gradient-to-b from-cyan-400 via-blue-500 to-transparent opacity-40",
+          className: "h-screen w-[2px] bg-gradient-to-t from-black via-red-600 to-transparent opacity-40",
           duration: 8,
           delay: 0,
           repeatDelay: 0,
@@ -82,15 +82,15 @@ const CollisionMechanism = ({
         // Generar beams a lo largo de todo el ancho de la pantalla
         const x = Math.random() * parentWidth;
         
-        // Calcular translateY dinámicamente basado en la altura de la pantalla
-        const translateYValue = `${parentHeight + 200}px`;
+        // Calcular translateY dinámicamente basado en la altura de la pantalla (de abajo hacia arriba)
+        const translateYValue = `-${parentHeight + 200}px`;
         
         const newBeam = {
           id: Date.now() + Math.random(),
           x,
           initialX: beamOptions?.initialX ?? 0,
           translateX: beamOptions?.translateX ?? 0,
-          initialY: beamOptions?.initialY ?? "-200px",
+          initialY: beamOptions?.initialY ?? `${parentHeight + 200}px`,
           translateY: translateYValue,
           rotate: beamOptions?.rotate ?? 0,
         };
@@ -130,7 +130,7 @@ const CollisionMechanism = ({
             ease: "linear",
           }}
           className={cn(
-            "absolute left-0 top-0 w-[2px] bg-gradient-to-b from-cyan-400 via-blue-500 to-transparent opacity-40",
+            "absolute left-0 top-0 w-[2px] bg-gradient-to-t from-black via-red-600 to-transparent opacity-40",
             beamOptions?.className || "h-screen"
           )}
           style={{

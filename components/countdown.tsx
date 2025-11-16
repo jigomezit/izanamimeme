@@ -1,22 +1,23 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 
 interface TimeLeft {
-  days: number;
   hours: number;
   minutes: number;
   seconds: number;
 }
 
 export function Countdown() {
+  const router = useRouter();
   const [timeLeft, setTimeLeft] = useState<TimeLeft>({
-    days: 0,
     hours: 0,
     minutes: 0,
     seconds: 0,
   });
   const [mounted, setMounted] = useState(false);
+  const [hasRedirected, setHasRedirected] = useState(false);
 
   useEffect(() => {
     setMounted(true);
@@ -46,15 +47,20 @@ export function Countdown() {
       }
 
       if (difference > 0) {
-        const days = Math.floor(difference / (1000 * 60 * 60 * 24));
-        const hours = Math.floor((difference % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+        const hours = Math.floor(difference / (1000 * 60 * 60));
         const minutes = Math.floor((difference % (1000 * 60 * 60)) / (1000 * 60));
         const seconds = Math.floor((difference % (1000 * 60)) / 1000);
 
-        setTimeLeft({ days, hours, minutes, seconds });
+        setTimeLeft({ hours, minutes, seconds });
       } else {
         // Si la fecha ya pasó, mostrar ceros
-        setTimeLeft({ days: 0, hours: 0, minutes: 0, seconds: 0 });
+        setTimeLeft({ hours: 0, minutes: 0, seconds: 0 });
+        
+        // Redirigir a /votacion cuando llegue a cero (solo una vez)
+        if (!hasRedirected) {
+          setHasRedirected(true);
+          router.push('/votacion');
+        }
       }
     };
 
@@ -80,13 +86,6 @@ export function Countdown() {
   return (
     <div className="flex flex-col items-center justify-center gap-8">
       <div className="flex gap-4 md:gap-8 flex-wrap justify-center">
-        <div className="flex flex-col items-center">
-          <div className="text-6xl md:text-8xl font-bold text-white">
-            {formatNumber(timeLeft.days)}
-          </div>
-          <div className="text-sm md:text-lg text-gray-400 mt-2">Días</div>
-        </div>
-        <div className="text-6xl md:text-8xl font-bold text-white">:</div>
         <div className="flex flex-col items-center">
           <div className="text-6xl md:text-8xl font-bold text-white">
             {formatNumber(timeLeft.hours)}
