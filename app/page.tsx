@@ -174,6 +174,9 @@ export default function Home() {
     );
   }
 
+  // Ordenar candidatos por votos (de mayor a menor)
+  const candidatosOrdenados = [...stats].sort((a, b) => b.votos - a.votos);
+
   return (
     <BackgroundBeamsWithCollision>
       <div className="flex flex-col items-center justify-center min-h-screen px-4 py-12">
@@ -181,7 +184,7 @@ export default function Home() {
           ¡El Ganador es!
         </h1>
 
-        <div className="flex flex-col items-center gap-6 sm:gap-8">
+        <div className="flex flex-col items-center gap-6 sm:gap-8 mb-12">
           {/* Imagen del ganador */}
           <div className="relative w-full max-w-[300px] sm:max-w-[400px] md:max-w-[500px] aspect-[3/4] rounded-lg overflow-hidden border-4 sm:border-8 border-yellow-400 shadow-2xl bg-black/10 animate-pulse">
             <img
@@ -211,6 +214,64 @@ export default function Home() {
           <p className="text-xl sm:text-2xl md:text-3xl text-green-400 font-semibold text-center mt-4">
             ¡Felicidades! 🎉
           </p>
+        </div>
+
+        {/* Tabla de resultados de todos los candidatos */}
+        <div className="w-full max-w-4xl mt-8">
+          <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-center text-white mb-6 drop-shadow-lg">
+            Resultados Completos
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
+            {candidatosOrdenados.map((stat, index) => {
+              const candidato = candidatos.find((c) => c.nombre === stat.candidato);
+              const esGanador = stat.candidato === ganador;
+              
+              return (
+                <div
+                  key={stat.candidato}
+                  className={`flex flex-col items-center gap-3 p-4 rounded-lg border-2 ${
+                    esGanador
+                      ? "border-yellow-400 bg-yellow-400/10 shadow-lg"
+                      : "border-white/30 bg-black/10"
+                  }`}
+                >
+                  {/* Imagen del candidato */}
+                  <div className={`relative w-full max-w-[150px] sm:max-w-[180px] aspect-[3/4] rounded-lg overflow-hidden border-2 ${
+                    esGanador ? "border-yellow-400" : "border-white/30"
+                  }`}>
+                    <img
+                      src={candidato?.imagen || ""}
+                      alt={stat.candidato}
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement;
+                        target.src = `https://ui-avatars.com/api/?name=${stat.candidato}&size=256&background=random&color=fff&bold=true`;
+                      }}
+                    />
+                  </div>
+
+                  {/* Nombre */}
+                  <h3 className={`text-xl sm:text-2xl md:text-3xl font-bold text-center ${
+                    esGanador ? "text-yellow-400" : "text-white"
+                  }`}>
+                    {stat.candidato}
+                  </h3>
+
+                  {/* Votos */}
+                  <div className="text-lg sm:text-xl md:text-2xl text-white font-semibold">
+                    {stat.votos} {stat.votos === 1 ? "voto" : "votos"}
+                  </div>
+
+                  {/* Posición */}
+                  <div className={`text-sm sm:text-base font-semibold ${
+                    esGanador ? "text-yellow-400" : "text-gray-300"
+                  }`}>
+                    {index === 0 ? "🥇 Ganador" : index === 1 ? "🥈 2do lugar" : "🥉 3er lugar"}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </div>
       </div>
     </BackgroundBeamsWithCollision>
