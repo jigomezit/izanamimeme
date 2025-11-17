@@ -103,12 +103,12 @@ export function VoteCountdown({ onComplete }: VoteCountdownProps) {
   const formatNumber = (num: number) => String(num).padStart(2, "0");
 
   return (
-    <div className="mt-4 flex flex-col items-center gap-2">
-      <p className="text-sm sm:text-base text-gray-300">
+    <div className="flex flex-col items-center gap-1 md:gap-2">
+      <p className="text-xs sm:text-sm md:text-sm text-gray-300 text-center">
         Conoce al ganador en:
       </p>
       <div className="flex gap-2 items-center">
-        <div className="text-2xl sm:text-3xl md:text-4xl font-bold text-white">
+        <div className="text-xl sm:text-2xl md:text-3xl font-bold text-white drop-shadow-lg">
           {formatNumber(timeLeft.hours)}:{formatNumber(timeLeft.minutes)}:{formatNumber(timeLeft.seconds)}
         </div>
       </div>

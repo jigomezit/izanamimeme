@@ -5,7 +5,6 @@ import { BackgroundBeamsWithCollision } from "@/components/background-beams-with
 import { supabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
 import confetti from "canvas-confetti";
-import { LightningEffect } from "@/components/lightning-effect";
 import { VoteCountdown } from "@/components/vote-countdown";
 
 type Candidato = "Jimmy" | "Alex" | "Mariano";
@@ -15,12 +14,55 @@ interface VotoStats {
   votos: number;
 }
 
+// Constantes para el cache - Ajusta la duración aquí
+const CACHE_KEY = "izanami_voto";
+const CACHE_DURATION_HORAS = 1; // Duración en horas (cambia este valor para ajustar)
+const CACHE_DURATION = CACHE_DURATION_HORAS * 60 * 60 * 1000; // Convertir a milisegundos
+
+interface VotoCache {
+  candidato: Candidato;
+  timestamp: number;
+}
+
+// Funciones helper para manejar el cache
+const guardarVotoEnCache = (candidato: Candidato): void => {
+  const votoCache: VotoCache = {
+    candidato,
+    timestamp: Date.now(),
+  };
+  try {
+    localStorage.setItem(CACHE_KEY, JSON.stringify(votoCache));
+  } catch (e) {
+    console.error("Error guardando en cache:", e);
+  }
+};
+
+const obtenerVotoDelCache = (): VotoCache | null => {
+  try {
+    const cacheData = localStorage.getItem(CACHE_KEY);
+    if (!cacheData) return null;
+
+    const votoCache: VotoCache = JSON.parse(cacheData);
+    const tiempoTranscurrido = Date.now() - votoCache.timestamp;
+
+    // Si pasó más del tiempo configurado, el cache expiró
+    if (tiempoTranscurrido > CACHE_DURATION) {
+      localStorage.removeItem(CACHE_KEY);
+      return null;
+    }
+
+    return votoCache;
+  } catch (e) {
+    console.error("Error leyendo cache:", e);
+    return null;
+  }
+};
+
 export default function VotacionPage() {
   const [votando, setVotando] = useState(false);
   const [votoRealizado, setVotoRealizado] = useState(false);
   const [stats, setStats] = useState<VotoStats[]>([]);
   const [cargandoStats, setCargandoStats] = useState(true);
-  const [candidatoConRayo, setCandidatoConRayo] = useState<Candidato | null>(null);
   const [votosAnteriores, setVotosAnteriores] = useState<Record<string, number>>({});
   const [candidatoVotado, setCandidatoVotado] = useState<Candidato | null>(null);
   const candidatoRefs = useRef<Record<string, HTMLDivElement | null>>({});
@@ -32,6 +74,14 @@ export default function VotacionPage() {
   ];
 
   useEffect(() => {
+    // Verificar si hay un voto en cache al cargar la página
+    const votoCache = obtenerVotoDelCache();
+    if (votoCache) {
+      // Hay un voto válido en cache
+      setVotoRealizado(true);
+      setCandidatoVotado(votoCache.candidato);
+    }
+
     cargarStats();
     // Actualizar stats cada 5 segundos
     const interval = setInterval(cargarStats, 5000);
@@ -186,13 +236,31 @@ export default function VotacionPage() {
   const handleVotar = async (candidato: Candidato) => {
     if (votando || votoRealizado) return;
 
+    // Verificar cache antes de votar
+    const votoCache = obtenerVotoDelCache();
+    if (votoCache) {
+      // Ya hay un voto en cache válido
+      const tiempoRestante = CACHE_DURATION - (Date.now() - votoCache.timestamp);
+      const horasRestantes = Math.floor(tiempoRestante / (60 * 60 * 1000));
+      const minutosRestantes = Math.ceil((tiempoRestante % (60 * 60 * 1000)) / (60 * 1000));
+      
+      let mensajeTiempo = "";
+      if (horasRestantes > 0) {
+        mensajeTiempo = `${horasRestantes} hora(s) y ${minutosRestantes} minuto(s)`;
+      } else {
+        mensajeTiempo = `${minutosRestantes} minuto(s)`;
+      }
+      
+      alert(`Ya has votado recientemente. Debes esperar ${mensajeTiempo} más para poder votar nuevamente.`);
+      setVotoRealizado(true);
+      setCandidatoVotado(votoCache.candidato);
+      return;
+    }
+
     setVotando(true);
 
     // Disparar confeti desde todos los candidatos
     dispararConfetiDesdeCandidatos();
-
-    // Activar rayo para el candidato votado
-    setCandidatoConRayo(candidato);
 
     try {
       // Obtener IP del cliente (usando un servicio externo)
@@ -212,40 +280,34 @@ export default function VotacionPage() {
 
       if (error) throw error;
 
+      // Guardar voto en cache con timestamp
+      guardarVotoEnCache(candidato);
+
       setVotoRealizado(true);
       setCandidatoVotado(candidato);
       
-      // Esperar un poco antes de cargar stats para que el rayo se vea
+      // Esperar un poco antes de cargar stats
       setTimeout(async () => {
         await cargarStats();
       }, 500);
     } catch (error) {
       console.error("Error votando:", error);
       alert("Error al votar. Por favor, intenta nuevamente.");
-      setCandidatoConRayo(null);
     } finally {
       setVotando(false);
     }
   };
 
-  const handleRayoComplete = () => {
-    setCandidatoConRayo(null);
-  };
-
-  const getVotosCandidato = (nombre: string) => {
-    const stat = stats.find((s) => s.candidato === nombre);
-    return stat?.votos || 0;
-  };
 
   return (
     <BackgroundBeamsWithCollision>
-      <div className="flex flex-col items-center justify-center min-h-screen px-3 sm:px-4 py-2 sm:py-12 transition-all duration-700">
-        <h1 className="text-xl sm:text-4xl md:text-6xl lg:text-7xl font-bold text-center text-white mb-2 sm:mb-12 drop-shadow-lg uppercase transition-all duration-700">
+      <div className="flex flex-col items-center justify-center min-h-screen px-3 sm:px-4 md:px-6 py-2 sm:py-6 md:py-8 transition-all duration-700">
+        <h1 className="text-xl sm:text-4xl md:text-4xl lg:text-5xl font-bold text-center text-white mb-2 sm:mb-6 md:mb-8 drop-shadow-lg uppercase transition-all duration-700">
           IZANAMI VOTA
         </h1>
 
-        <div className={`grid gap-2 sm:gap-8 md:gap-12 w-full max-w-6xl transition-all duration-700 ${
-          votoRealizado && candidatoVotado ? "grid-cols-1" : "grid-cols-1 md:grid-cols-3"
+        <div className={`grid gap-2 sm:gap-4 md:gap-6 w-full max-w-6xl mx-auto transition-all duration-700 ${
+          votoRealizado && candidatoVotado ? "grid-cols-1 auto-rows-auto" : "grid-cols-1 md:grid-cols-3"
         }`}>
           {candidatos.map((candidato) => {
             const esCandidatoVotado = votoRealizado && candidato.nombre === candidatoVotado;
@@ -260,16 +322,16 @@ export default function VotacionPage() {
                 className={`transition-all duration-700 ease-in-out ${
                   mostrarCandidato 
                     ? esCandidatoVotado 
-                      ? "opacity-100 scale-100 flex flex-col items-center justify-center gap-4 sm:gap-6 w-full mt-8 sm:mt-12" 
-                      : "opacity-100 flex flex-row md:flex-col items-center md:items-center gap-3 sm:gap-4"
+                      ? "opacity-100 scale-100 flex flex-col items-center justify-center gap-2 sm:gap-3 md:gap-4 w-full mt-2 sm:mt-6 md:mt-8 px-4 md:px-6" 
+                      : "opacity-100 flex flex-row md:flex-col items-center md:items-center justify-center gap-3 sm:gap-4 w-full"
                     : "opacity-0 scale-90 pointer-events-none h-0 overflow-hidden"
                 }`}
               >
                 {/* Imagen del candidato - Más grande y centrada si es el votado */}
-                <div className={`relative w-full aspect-[4/5] sm:aspect-[3/4] rounded-lg overflow-hidden border-2 sm:border-4 border-white/30 hover:border-white/60 transition-all duration-500 cursor-pointer shadow-2xl bg-black/10 ${
+                <div className={`relative w-full aspect-[4/5] sm:aspect-[3/4] rounded-lg overflow-hidden border-2 sm:border-4 md:border-3 border-white/30 hover:border-white/60 transition-all duration-500 cursor-pointer shadow-2xl bg-black/10 ${
                   esCandidatoVotado 
-                    ? "max-w-[200px] sm:max-w-[300px] md:max-w-[400px] mx-auto" 
-                    : "max-w-[140px] sm:max-w-[240px] md:max-w-[280px] flex-shrink-0"
+                    ? "max-w-[180px] sm:max-w-[240px] md:max-w-[260px] lg:max-w-[280px] mx-auto mb-2 md:mb-3" 
+                    : "max-w-[140px] sm:max-w-[240px] md:max-w-[280px] flex-shrink-0 md:mx-auto"
                 }`}>
                   <img
                     src={candidato.imagen}
@@ -285,31 +347,31 @@ export default function VotacionPage() {
 
                 {/* Contenedor para nombre y botón - Layout diferente si es votado */}
                 {esCandidatoVotado ? (
-                  <div className="flex flex-col items-center gap-4 sm:gap-6 w-full">
+                  <div className="flex flex-col items-center justify-center gap-2 sm:gap-3 md:gap-4 w-full max-w-2xl mx-auto">
                     {/* Mensaje "Votaste por!" y nombre */}
-                    <div className="text-center">
-                      <p className="text-lg sm:text-2xl md:text-3xl text-white font-semibold mb-2">
+                    <div className="text-center w-full">
+                      <p className="text-sm sm:text-lg md:text-xl text-white font-semibold mb-1">
                         Votaste por!
                       </p>
-                      <h2 className="text-2xl sm:text-5xl md:text-6xl font-bold text-white drop-shadow-lg">
+                      <h2 className="text-lg sm:text-3xl md:text-4xl font-bold text-white drop-shadow-lg">
                         {candidato.nombre}
                       </h2>
                     </div>
 
                     {/* Mensaje de confirmación */}
-                    <p className="text-sm sm:text-xl text-green-400 font-semibold text-center">
+                    <p className="text-xs sm:text-base md:text-lg text-green-400 font-semibold text-center mb-2 md:mb-3 w-full">
                       ¡Gracias por votar! Tu voto ha sido registrado.
                     </p>
 
                     {/* Cuenta atrás */}
-                    <div className="w-full">
+                    <div className="w-full flex justify-center items-center mt-2 md:mt-3">
                       <VoteCountdown />
                     </div>
                   </div>
                 ) : (
-                  <div className="flex flex-col items-center md:items-center gap-2 sm:gap-4 flex-1 md:flex-none">
+                  <div className="flex flex-col items-center justify-center gap-2 sm:gap-4 flex-1 md:flex-none w-full md:w-auto">
                     {/* Nombre del candidato */}
-                    <h2 className="text-lg sm:text-3xl md:text-4xl font-bold text-white text-center drop-shadow-lg">
+                    <h2 className="text-lg sm:text-3xl md:text-4xl font-bold text-white text-center drop-shadow-lg w-full">
                       {candidato.nombre}
                     </h2>
 
@@ -318,7 +380,7 @@ export default function VotacionPage() {
                       <Button
                         onClick={() => handleVotar(candidato.nombre)}
                         disabled={votando || votoRealizado}
-                        className="w-full sm:max-w-xs text-sm sm:text-lg py-2.5 sm:py-6 px-4 sm:px-6 font-bold shadow-xl"
+                        className="w-full sm:max-w-xs md:w-auto md:min-w-[150px] text-sm sm:text-lg py-2.5 sm:py-6 px-4 sm:px-6 font-bold shadow-xl"
                         variant={votoRealizado ? "outline" : "default"}
                       >
                         {votando
@@ -331,23 +393,6 @@ export default function VotacionPage() {
                   </div>
                 )}
 
-                {/* Contador de votos - Oculto en móvil, visible en desktop */}
-                {!cargandoStats && !esCandidatoVotado && (
-                  <div className="hidden sm:block relative text-xl md:text-2xl text-gray-300 mt-2 min-h-[2rem] flex items-start justify-start pt-16 overflow-visible">
-                    <span
-                      className={`relative z-10 transition-all duration-300 ${
-                        candidatoConRayo === candidato.nombre
-                          ? "text-yellow-400 scale-125 font-bold drop-shadow-[0_0_10px_rgba(255,255,0,0.8)]"
-                          : ""
-                      }`}
-                    >
-                      {getVotosCandidato(candidato.nombre)} votos
-                    </span>
-                    {candidatoConRayo === candidato.nombre && (
-                      <LightningEffect show={true} onComplete={handleRayoComplete} />
-                    )}
-                  </div>
-                )}
               </div>
             );
           })}
