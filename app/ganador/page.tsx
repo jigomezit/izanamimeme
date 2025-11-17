@@ -179,7 +179,7 @@ export default function GanadorPage() {
 
   return (
     <BackgroundBeamsWithCollision>
-      <div className="flex flex-col items-center justify-center min-h-screen px-4 py-12">
+      <div className="flex flex-col items-center px-4 py-12">
         <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold text-center text-white mb-8 drop-shadow-lg">
           ¡El Ganador es!
         </h1>
